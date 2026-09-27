@@ -802,6 +802,7 @@ void System::ApplySettings() {
         auto& settings = gpu->Renderer().Settings();
         settings.bg_color_update_requested = true;
         settings.shader_update_requested = true;
+        settings.bottom_overlay_update_requested = true;
     }
 
     if (IsPoweredOn()) {

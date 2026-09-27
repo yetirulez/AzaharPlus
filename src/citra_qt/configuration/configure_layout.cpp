@@ -5,8 +5,10 @@
 #include <QColorDialog>
 #include <QtGlobal>
 #include "citra_qt/configuration/configuration_shared.h"
+#include "citra_qt/configuration/configure_bottom_overlays.h"
 #include "citra_qt/configuration/configure_layout.h"
 #include "citra_qt/configuration/configure_layout_cycle.h"
+#include "common/bottom_overlay.h"
 #include "common/settings.h"
 #include "ui_configure_layout.h"
 #ifdef ENABLE_OPENGL
@@ -119,6 +121,23 @@ ConfigureLayout::ConfigureLayout(QWidget* parent)
         layout_cycle_dialog->exec();
         ui->customize_layouts_to_cycle->setEnabled(true);
     });
+
+    connect(ui->configure_bottom_overlays, &QPushButton::clicked, this, [this] {
+        const bool per_game = !Settings::IsConfiguringGlobal();
+        ConfigureBottomOverlays dialog(Settings::ParseBottomScreenOverlays(bottom_overlays),
+                                       per_game, this);
+        if (dialog.exec() != QDialog::Accepted) {
+            return;
+        }
+        if (dialog.ResetToGlobalRequested()) {
+            bottom_overlays_per_game = false;
+            bottom_overlays = Settings::values.bottom_overlays.GetValue(true);
+        } else {
+            bottom_overlays_per_game = per_game;
+            bottom_overlays = Settings::SerializeBottomScreenOverlays(dialog.GetOverlays());
+        }
+        UpdateBottomOverlaySummary();
+    });
 }
 
 ConfigureLayout::~ConfigureLayout() = default;
@@ -135,6 +154,11 @@ void ConfigureLayout::SetConfiguration() {
 
     ui->toggle_swap_screen->setChecked(Settings::values.swap_screen.GetValue());
     ui->toggle_upright_screen->setChecked(Settings::values.upright_screen.GetValue());
+    ui->toggle_bottom_overlays->setChecked(Settings::values.bottom_overlay_enabled.GetValue());
+    bottom_overlays = Settings::values.bottom_overlays.GetValue();
+    bottom_overlays_per_game =
+        !Settings::IsConfiguringGlobal() && !Settings::values.bottom_overlays.UsingGlobal();
+    UpdateBottomOverlaySummary();
     ui->screen_gap->setValue(Settings::values.screen_gap.GetValue());
     ui->large_screen_proportion->setValue(Settings::values.large_screen_proportion.GetValue());
     ui->small_screen_position_combobox->setCurrentIndex(
@@ -200,6 +224,18 @@ void ConfigureLayout::ApplyConfiguration() {
                                              swap_screen);
     ConfigurationShared::ApplyPerGameSetting(&Settings::values.upright_screen,
                                              ui->toggle_upright_screen, upright_screen);
+    ConfigurationShared::ApplyPerGameSetting(&Settings::values.bottom_overlay_enabled,
+                                             ui->toggle_bottom_overlays, bottom_overlay_enabled);
+    if (Settings::IsConfiguringGlobal()) {
+        if (Settings::values.bottom_overlays.UsingGlobal()) {
+            Settings::values.bottom_overlays.SetValue(bottom_overlays);
+        }
+    } else if (bottom_overlays_per_game) {
+        Settings::values.bottom_overlays.SetGlobal(false);
+        Settings::values.bottom_overlays.SetValue(bottom_overlays);
+    } else {
+        Settings::values.bottom_overlays.SetGlobal(true);
+    }
 
     Settings::values.bg_red = static_cast<float>(bg_color.redF());
     Settings::values.bg_green = static_cast<float>(bg_color.greenF());
@@ -211,6 +247,9 @@ void ConfigureLayout::SetupPerGameUI() {
     if (Settings::IsConfiguringGlobal()) {
         ui->toggle_swap_screen->setEnabled(Settings::values.swap_screen.UsingGlobal());
         ui->toggle_upright_screen->setEnabled(Settings::values.upright_screen.UsingGlobal());
+        ui->toggle_bottom_overlays->setEnabled(
+            Settings::values.bottom_overlay_enabled.UsingGlobal());
+        ui->configure_bottom_overlays->setEnabled(Settings::values.bottom_overlays.UsingGlobal());
         return;
     }
 
@@ -220,8 +259,21 @@ void ConfigureLayout::SetupPerGameUI() {
                                             swap_screen);
     ConfigurationShared::SetColoredTristate(ui->toggle_upright_screen,
                                             Settings::values.upright_screen, upright_screen);
+    ConfigurationShared::SetColoredTristate(ui->toggle_bottom_overlays,
+                                            Settings::values.bottom_overlay_enabled,
+                                            bottom_overlay_enabled);
 
     ConfigurationShared::SetColoredComboBox(
         ui->layout_combobox, ui->widget_layout,
         static_cast<int>(Settings::values.layout_option.GetValue(true)));
+}
+
+void ConfigureLayout::UpdateBottomOverlaySummary() {
+    const auto count = Settings::ParseBottomScreenOverlays(bottom_overlays).size();
+    QString text = count == 0 ? tr("No overlays configured")
+                              : tr("%n overlay(s) configured", nullptr, static_cast<int>(count));
+    if (!Settings::IsConfiguringGlobal()) {
+        text += bottom_overlays_per_game ? tr(" (this game)") : tr(" (global)");
+    }
+    ui->bottom_overlay_summary->setText(text);
 }

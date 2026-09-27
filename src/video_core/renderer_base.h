@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <vector>
+#include "common/bottom_overlay.h"
 #include "common/common_types.h"
 #include "core/frontend/framebuffer_layout.h"
 #include "video_core/rasterizer_interface.h"
@@ -33,6 +35,7 @@ struct RendererSettings {
     // Renderer
     std::atomic_bool bg_color_update_requested{false};
     std::atomic_bool shader_update_requested{false};
+    std::atomic_bool bottom_overlay_update_requested{false};
 };
 
 class RendererBase : NonCopyable {
@@ -105,6 +108,14 @@ public:
                            const Layout::FramebufferLayout& layout);
 
 protected:
+    /// Re-parses the bottom screen overlay setting if an update was requested.
+    void UpdateBottomOverlays();
+
+    /// Returns the overlays that should be drawn this frame (empty when disabled).
+    [[nodiscard]] const std::vector<::Settings::BottomScreenOverlay>& GetActiveBottomOverlays()
+        const;
+
+protected:
     Core::System& system;
     RendererSettings settings;
     Frontend::EmuWindow& render_window;    /// Reference to the render window handle.
@@ -113,6 +124,9 @@ protected:
 protected:
     f32 current_fps = 0.0f; /// Current framerate, should be set by the renderer
     u64 current_frame = 0;  /// Current frame, should be set by the renderer
+
+private:
+    std::vector<::Settings::BottomScreenOverlay> bottom_overlays;
 };
 
 } // namespace VideoCore

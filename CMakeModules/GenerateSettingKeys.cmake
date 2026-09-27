@@ -68,6 +68,8 @@ foreach(KEY IN ITEMS
     "custom_bottom_width"
     "custom_bottom_height"
     "custom_second_layer_opacity"
+    "bottom_overlay_enabled"
+    "bottom_overlays"
     "aspect_ratio"
     "screen_top_stretch"
     "screen_top_leftright_padding"

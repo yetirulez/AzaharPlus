@@ -5,6 +5,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <QWidget>
 #include "common/common_types.h"
 
@@ -37,8 +38,14 @@ private:
     void updateShaders(Settings::StereoRenderOption stereo_option);
     void updateTextureFilter(int index);
 
+    void UpdateBottomOverlaySummary();
+
     std::unique_ptr<Ui::ConfigureLayout> ui;
     ConfigurationShared::CheckState swap_screen;
     ConfigurationShared::CheckState upright_screen;
+    ConfigurationShared::CheckState bottom_overlay_enabled;
+    std::string bottom_overlays;
+    // Per-game only: whether this game has its own overlays instead of the global ones
+    bool bottom_overlays_per_game = false;
     QColor bg_color;
 };

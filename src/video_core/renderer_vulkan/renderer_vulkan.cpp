@@ -746,8 +746,13 @@ void RendererVulkan::ReloadPipeline(Settings::StereoRenderOption render_3d) {
 
 void RendererVulkan::DrawSingleScreen(u32 screen_id, float x, float y, float w, float h,
                                       Layout::DisplayOrientation orientation) {
+    DrawSingleScreen(screen_id, screen_infos[screen_id].texcoords, x, y, w, h, orientation);
+}
+
+void RendererVulkan::DrawSingleScreen(u32 screen_id, const Common::Rectangle<f32>& texcoords,
+                                      float x, float y, float w, float h,
+                                      Layout::DisplayOrientation orientation) {
     const ScreenInfo& screen_info = screen_infos[screen_id];
-    const auto& texcoords = screen_info.texcoords;
 
     std::array<ScreenRectVertex, 4> vertices;
     switch (orientation) {
@@ -818,8 +823,15 @@ void RendererVulkan::DrawSingleScreen(u32 screen_id, float x, float y, float w, 
 void RendererVulkan::DrawSingleScreenStereo(u32 screen_id_l, u32 screen_id_r, float x, float y,
                                             float w, float h,
                                             Layout::DisplayOrientation orientation) {
+    DrawSingleScreenStereo(screen_id_l, screen_id_r, screen_infos[screen_id_l].texcoords, x, y, w,
+                           h, orientation);
+}
+
+void RendererVulkan::DrawSingleScreenStereo(u32 screen_id_l, u32 screen_id_r,
+                                            const Common::Rectangle<f32>& texcoords, float x,
+                                            float y, float w, float h,
+                                            Layout::DisplayOrientation orientation) {
     const ScreenInfo& screen_info_l = screen_infos[screen_id_l];
-    const auto& texcoords = screen_info_l.texcoords;
 
     std::array<ScreenRectVertex, 4> vertices;
     switch (orientation) {
@@ -1011,6 +1023,71 @@ void RendererVulkan::DrawBottomScreen(const Layout::FramebufferLayout& layout,
     }
 }
 
+void RendererVulkan::DrawBottomScreenOverlays(const Layout::FramebufferLayout& layout,
+                                              const Common::Rectangle<u32>& top_screen) {
+    const auto& overlays = GetActiveBottomOverlays();
+    if (overlays.empty() || !layout.top_screen_enabled || !layout.draw_bottom_overlays) {
+        return;
+    }
+
+    constexpr u32 BottomScreenId = 2;
+    const auto orientation = layout.is_rotated ? Layout::DisplayOrientation::Landscape
+                                               : Layout::DisplayOrientation::Portrait;
+    const float top_left = static_cast<float>(top_screen.left);
+    const float top_top = static_cast<float>(top_screen.top);
+    const float top_width = static_cast<float>(top_screen.GetWidth());
+    const float top_height = static_cast<float>(top_screen.GetHeight());
+    const float half_width = static_cast<float>(layout.width) / 2.0f;
+
+    for (const auto& overlay : overlays) {
+        const auto texcoords =
+            Settings::CropBottomScreenTexcoords(screen_infos[BottomScreenId].texcoords, overlay);
+        ApplySecondLayerOpacity(overlay.opacity);
+
+        // Mirrors the per-eye placement used by DrawTopScreen for each stereo mode
+        const auto draw_eye = [&](float screen_x, float screen_w, float eye_offset, int layer) {
+            const auto rect = Settings::GetBottomScreenOverlayDrawRect(
+                overlay, screen_x, top_top, screen_w, top_height, layout.is_rotated);
+            draw_info.layer = layer;
+            DrawSingleScreen(BottomScreenId, texcoords, rect.x + eye_offset, rect.y, rect.w, rect.h,
+                             orientation);
+        };
+
+        switch (layout.render_3d_mode) {
+        case Settings::StereoRenderOption::Off:
+            draw_eye(top_left, top_width, 0.0f, 0);
+            break;
+        case Settings::StereoRenderOption::SideBySide:
+            draw_eye(top_left / 2, top_width / 2, 0.0f, 0);
+            draw_eye(top_left / 2, top_width / 2, half_width, 1);
+            break;
+        case Settings::StereoRenderOption::SideBySideFull:
+            draw_eye(top_left, top_width, 0.0f, 0);
+            draw_eye(top_left, top_width, half_width, 1);
+            break;
+        case Settings::StereoRenderOption::CardboardVR:
+            draw_eye(top_left, top_width, 0.0f, 0);
+            draw_eye(top_left, top_width,
+                     static_cast<float>(layout.cardboard.top_screen_right_eye) + half_width -
+                         top_left,
+                     1);
+            break;
+        case Settings::StereoRenderOption::Anaglyph:
+        case Settings::StereoRenderOption::Interlaced:
+        case Settings::StereoRenderOption::ReverseInterlaced: {
+            const auto rect = Settings::GetBottomScreenOverlayDrawRect(
+                overlay, top_left, top_top, top_width, top_height, layout.is_rotated);
+            draw_info.layer = 0;
+            DrawSingleScreenStereo(BottomScreenId, BottomScreenId, texcoords, rect.x, rect.y,
+                                   rect.w, rect.h, orientation);
+            break;
+        }
+        }
+    }
+    draw_info.layer = 0;
+    ApplySecondLayerOpacity(1.0f);
+}
+
 void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& layout,
                                  bool flipped) {
     if (settings.bg_color_update_requested.exchange(false)) {
@@ -1021,6 +1098,7 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
     if (settings.shader_update_requested.exchange(false)) {
         ReloadPipeline(layout.render_3d_mode);
     }
+    UpdateBottomOverlays();
 
     PrepareDraw(frame, layout);
 
@@ -1056,6 +1134,12 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
         } else {
             DrawBottomScreen(layout, additional_screen);
         }
+    }
+
+    // Bottom screen overlays are drawn last so they sit above both screens
+    DrawBottomScreenOverlays(layout, top_screen);
+    if (layout.additional_screen_enabled && !layout.additional_screen_is_bottom) {
+        DrawBottomScreenOverlays(layout, layout.additional_screen);
     }
 
     DrawCursor(layout);

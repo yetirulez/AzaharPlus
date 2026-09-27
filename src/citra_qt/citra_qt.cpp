@@ -2140,6 +2140,10 @@ void GMainWindow::InitializeHotkeys() {
                      [&] { Settings::values.dump_textures = !Settings::values.dump_textures; });
     connect_shortcut(QStringLiteral("Toggle Custom Textures"),
                      [&] { Settings::values.custom_textures = !Settings::values.custom_textures; });
+    connect_shortcut(QStringLiteral("Toggle Bottom Screen Overlays"), [&] {
+        Settings::values.bottom_overlay_enabled =
+            !Settings::values.bottom_overlay_enabled.GetValue();
+    });
 
     connect_shortcut(QStringLiteral("Toggle Turbo Mode"),
                      [&] { GMainWindow::SetTurboEnabled(!GMainWindow::IsTurboEnabled()); });

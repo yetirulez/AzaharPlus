@@ -107,8 +107,16 @@ private:
                        const Common::Rectangle<u32>& top_screen);
     void DrawSingleScreen(u32 screen_id, float x, float y, float w, float h,
                           Layout::DisplayOrientation orientation);
+    void DrawSingleScreen(u32 screen_id, const Common::Rectangle<f32>& texcoords, float x, float y,
+                          float w, float h, Layout::DisplayOrientation orientation);
     void DrawSingleScreenStereo(u32 screen_id_l, u32 screen_id_r, float x, float y, float w,
                                 float h, Layout::DisplayOrientation orientation);
+    void DrawSingleScreenStereo(u32 screen_id_l, u32 screen_id_r,
+                                const Common::Rectangle<f32>& texcoords, float x, float y, float w,
+                                float h, Layout::DisplayOrientation orientation);
+    /// Draws the cropped bottom screen overlays on top of the given top screen rectangle
+    void DrawBottomScreenOverlays(const Layout::FramebufferLayout& layout,
+                                  const Common::Rectangle<u32>& top_screen);
 
     void ApplySecondLayerOpacity(float alpha);
 

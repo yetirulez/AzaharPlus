@@ -92,6 +92,7 @@ const std::vector<UISettings::Shortcut> QtConfig::default_hotkeys{ {
      {QStringLiteral("Stop Emulation"),           QStringLiteral("Main Window"), {QStringLiteral("F5"),     QStringLiteral(""), Qt::ApplicationShortcut}},
      {QStringLiteral("Swap Screens"),             QStringLiteral("Main Window"), {QStringLiteral("F9"),     QStringLiteral(""), Qt::ApplicationShortcut}},
      {QStringLiteral("Toggle 3D"),                QStringLiteral("Main Window"), {QStringLiteral("Ctrl+3"), QStringLiteral(""), Qt::ApplicationShortcut}},
+     {QStringLiteral("Toggle Bottom Screen Overlays"), QStringLiteral("Main Window"), {QStringLiteral(""), QStringLiteral(""), Qt::ApplicationShortcut}},
      {QStringLiteral("Toggle Custom Textures"),   QStringLiteral("Main Window"), {QStringLiteral("F7"),     QStringLiteral(""), Qt::ApplicationShortcut}},
      {QStringLiteral("Toggle Filter Bar"),        QStringLiteral("Main Window"), {QStringLiteral("Ctrl+F"), QStringLiteral(""), Qt::ApplicationShortcut}},
      {QStringLiteral("Toggle Frame Advancing"),   QStringLiteral("Main Window"), {QStringLiteral("Ctrl+A"), QStringLiteral(""), Qt::ApplicationShortcut}},
@@ -552,6 +553,8 @@ void QtConfig::ReadLayoutValues() {
     ReadGlobalSetting(Settings::values.screen_gap);
     ReadGlobalSetting(Settings::values.small_screen_position);
     ReadGlobalSetting(Settings::values.layouts_to_cycle);
+    ReadGlobalSetting(Settings::values.bottom_overlay_enabled);
+    ReadGlobalSetting(Settings::values.bottom_overlays);
     if (global) {
         ReadBasicSetting(Settings::values.mono_render_option);
         ReadBasicSetting(Settings::values.custom_top_x);
@@ -1143,6 +1146,8 @@ void QtConfig::SaveLayoutValues() {
     WriteGlobalSetting(Settings::values.screen_gap);
     WriteGlobalSetting(Settings::values.small_screen_position);
     WriteGlobalSetting(Settings::values.layouts_to_cycle);
+    WriteGlobalSetting(Settings::values.bottom_overlay_enabled);
+    WriteGlobalSetting(Settings::values.bottom_overlays);
     if (global) {
         WriteBasicSetting(Settings::values.mono_render_option);
         WriteBasicSetting(Settings::values.custom_top_x);

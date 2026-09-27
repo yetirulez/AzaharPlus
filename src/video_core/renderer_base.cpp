@@ -13,9 +13,27 @@ namespace VideoCore {
 
 RendererBase::RendererBase(Core::System& system_, Frontend::EmuWindow& window,
                            Frontend::EmuWindow* secondary_window_)
-    : system{system_}, render_window{window}, secondary_window{secondary_window_} {}
+    : system{system_}, render_window{window}, secondary_window{secondary_window_} {
+    bottom_overlays =
+        ::Settings::ParseBottomScreenOverlays(::Settings::values.bottom_overlays.GetValue());
+}
 
 RendererBase::~RendererBase() = default;
+
+void RendererBase::UpdateBottomOverlays() {
+    if (settings.bottom_overlay_update_requested.exchange(false)) {
+        bottom_overlays =
+            ::Settings::ParseBottomScreenOverlays(::Settings::values.bottom_overlays.GetValue());
+    }
+}
+
+const std::vector<::Settings::BottomScreenOverlay>& RendererBase::GetActiveBottomOverlays() const {
+    static const std::vector<::Settings::BottomScreenOverlay> empty;
+    if (!::Settings::values.bottom_overlay_enabled.GetValue()) {
+        return empty;
+    }
+    return bottom_overlays;
+}
 
 u32 RendererBase::GetResolutionScaleFactor() {
     const auto graphics_api = Settings::GetWorkingGraphicsAPI();

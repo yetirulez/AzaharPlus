@@ -106,6 +106,8 @@ void LogSettings() {
     log_setting("Renderer_VSyncNew", values.use_vsync.GetValue());
     log_setting("Renderer_SkipDuplicateFrames", values.use_skip_duplicate_frames.GetValue());
     log_setting("Renderer_PostProcessingShader", values.pp_shader_name.GetValue());
+    log_setting("Layout_BottomOverlayEnabled", values.bottom_overlay_enabled.GetValue());
+    log_setting("Layout_BottomOverlays", values.bottom_overlays.GetValue());
     log_setting("Renderer_FilterMode", values.filter_mode.GetValue());
     log_setting("Renderer_TextureFilter", GetTextureFilterName(values.texture_filter.GetValue()));
     log_setting("Renderer_TextureSampling",
@@ -233,6 +235,8 @@ void RestoreGlobalState(bool is_powered_on) {
     values.large_screen_proportion.SetGlobal(true);
     values.screen_gap.SetGlobal(true);
     values.small_screen_position.SetGlobal(true);
+    values.bottom_overlay_enabled.SetGlobal(true);
+    values.bottom_overlays.SetGlobal(true);
     values.bg_red.SetGlobal(true);
     values.bg_green.SetGlobal(true);
     values.bg_blue.SetGlobal(true);

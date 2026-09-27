@@ -73,9 +73,18 @@ private:
                        const Common::Rectangle<u32>& top_screen);
     void DrawSingleScreen(const ScreenInfo& screen_info, float x, float y, float w, float h,
                           Layout::DisplayOrientation orientation);
+    void DrawSingleScreen(const ScreenInfo& screen_info, const Common::Rectangle<float>& texcoords,
+                          float x, float y, float w, float h,
+                          Layout::DisplayOrientation orientation);
     void DrawSingleScreenStereo(const ScreenInfo& screen_info_l, const ScreenInfo& screen_info_r,
                                 float x, float y, float w, float h,
                                 Layout::DisplayOrientation orientation);
+    void DrawSingleScreenStereo(const ScreenInfo& screen_info_l, const ScreenInfo& screen_info_r,
+                                const Common::Rectangle<float>& texcoords, float x, float y,
+                                float w, float h, Layout::DisplayOrientation orientation);
+    /// Draws the cropped bottom screen overlays on top of the given top screen rectangle
+    void DrawBottomScreenOverlays(const Layout::FramebufferLayout& layout,
+                                  const Common::Rectangle<u32>& top_screen);
 
     // Loads framebuffer from emulated memory into the display information structure
     void LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer, ScreenInfo& screen_info,

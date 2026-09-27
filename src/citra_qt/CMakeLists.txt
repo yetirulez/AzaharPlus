@@ -37,6 +37,8 @@ add_library(citra_qt STATIC EXCLUDE_FROM_ALL
     configuration/configure_audio.cpp
     configuration/configure_audio.h
     configuration/configure_audio.ui
+    configuration/configure_bottom_overlays.cpp
+    configuration/configure_bottom_overlays.h
     configuration/configure_camera.cpp
     configuration/configure_camera.h
     configuration/configure_camera.ui

@@ -41,6 +41,8 @@ struct FramebufferLayout {
     bool additional_screen_is_bottom = false;
     Common::Rectangle<u32> additional_screen;
     CardboardSettings cardboard;
+    // Whether the bottom screen overlays (see common/bottom_overlay.h) should be drawn
+    bool draw_bottom_overlays = true;
 
     /**
      * Returns the ratio of pixel size of the top screen, compared to the native size of the 3DS

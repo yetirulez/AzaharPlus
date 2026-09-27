@@ -534,7 +534,12 @@ void RendererOpenGL::ConfigureFramebufferTexture(TextureInfo& texture,
  */
 void RendererOpenGL::DrawSingleScreen(const ScreenInfo& screen_info, float x, float y, float w,
                                       float h, Layout::DisplayOrientation orientation) {
-    const auto& texcoords = screen_info.display_texcoords;
+    DrawSingleScreen(screen_info, screen_info.display_texcoords, x, y, w, h, orientation);
+}
+
+void RendererOpenGL::DrawSingleScreen(const ScreenInfo& screen_info,
+                                      const Common::Rectangle<float>& texcoords, float x, float y,
+                                      float w, float h, Layout::DisplayOrientation orientation) {
 
     std::array<ScreenRectVertex, 4> vertices;
     switch (orientation) {
@@ -604,7 +609,15 @@ void RendererOpenGL::DrawSingleScreenStereo(const ScreenInfo& screen_info_l,
                                             const ScreenInfo& screen_info_r, float x, float y,
                                             float w, float h,
                                             Layout::DisplayOrientation orientation) {
-    const auto& texcoords = screen_info_l.display_texcoords;
+    DrawSingleScreenStereo(screen_info_l, screen_info_r, screen_info_l.display_texcoords, x, y, w,
+                           h, orientation);
+}
+
+void RendererOpenGL::DrawSingleScreenStereo(const ScreenInfo& screen_info_l,
+                                            const ScreenInfo& screen_info_r,
+                                            const Common::Rectangle<float>& texcoords, float x,
+                                            float y, float w, float h,
+                                            Layout::DisplayOrientation orientation) {
 
     std::array<ScreenRectVertex, 4> vertices;
     switch (orientation) {
@@ -688,6 +701,8 @@ void RendererOpenGL::DrawScreens(const Layout::FramebufferLayout& layout, bool f
         ReloadShader(layout.render_3d_mode);
     }
 
+    UpdateBottomOverlays();
+
     const auto& top_screen = layout.top_screen;
     const auto& bottom_screen = layout.bottom_screen;
 
@@ -734,6 +749,12 @@ void RendererOpenGL::DrawScreens(const Layout::FramebufferLayout& layout, bool f
         } else {
             DrawBottomScreen(layout, additional_screen);
         }
+    }
+
+    // Bottom screen overlays are drawn last so they sit above both screens
+    DrawBottomScreenOverlays(layout, top_screen);
+    if (layout.additional_screen_enabled && !layout.additional_screen_is_bottom) {
+        DrawBottomScreenOverlays(layout, layout.additional_screen);
     }
     ResetSecondLayerOpacity();
 }
@@ -874,6 +895,70 @@ void RendererOpenGL::DrawBottomScreen(const Layout::FramebufferLayout& layout,
         break;
     }
     }
+}
+
+void RendererOpenGL::DrawBottomScreenOverlays(const Layout::FramebufferLayout& layout,
+                                              const Common::Rectangle<u32>& top_screen) {
+    const auto& overlays = GetActiveBottomOverlays();
+    if (overlays.empty() || !layout.top_screen_enabled || !layout.draw_bottom_overlays) {
+        return;
+    }
+
+    const auto& bottom_info = screen_infos[2];
+    const auto orientation = layout.is_rotated ? Layout::DisplayOrientation::Landscape
+                                               : Layout::DisplayOrientation::Portrait;
+    const float top_left = static_cast<float>(top_screen.left);
+    const float top_top = static_cast<float>(top_screen.top);
+    const float top_width = static_cast<float>(top_screen.GetWidth());
+    const float top_height = static_cast<float>(top_screen.GetHeight());
+    const float half_width = static_cast<float>(layout.width) / 2.0f;
+
+    for (const auto& overlay : overlays) {
+        const auto texcoords =
+            Settings::CropBottomScreenTexcoords(bottom_info.display_texcoords, overlay);
+        ApplySecondLayerOpacity(overlay.opacity);
+
+        // Mirrors the per-eye placement used by DrawTopScreen for each stereo mode
+        const auto draw_eye = [&](float screen_x, float screen_w, float eye_offset, int layer) {
+            const auto rect = Settings::GetBottomScreenOverlayDrawRect(
+                overlay, screen_x, top_top, screen_w, top_height, layout.is_rotated);
+            glUniform1i(uniform_layer, layer);
+            DrawSingleScreen(bottom_info, texcoords, rect.x + eye_offset, rect.y, rect.w, rect.h,
+                             orientation);
+        };
+
+        switch (layout.render_3d_mode) {
+        case Settings::StereoRenderOption::Off:
+            draw_eye(top_left, top_width, 0.0f, 0);
+            break;
+        case Settings::StereoRenderOption::SideBySide:
+            draw_eye(top_left / 2, top_width / 2, 0.0f, 0);
+            draw_eye(top_left / 2, top_width / 2, half_width, 1);
+            break;
+        case Settings::StereoRenderOption::SideBySideFull:
+            draw_eye(top_left, top_width, 0.0f, 0);
+            draw_eye(top_left, top_width, half_width, 1);
+            break;
+        case Settings::StereoRenderOption::CardboardVR:
+            draw_eye(top_left, top_width, 0.0f, 0);
+            draw_eye(top_left, top_width,
+                     static_cast<float>(layout.cardboard.top_screen_right_eye) + half_width -
+                         top_left,
+                     1);
+            break;
+        case Settings::StereoRenderOption::Anaglyph:
+        case Settings::StereoRenderOption::Interlaced:
+        case Settings::StereoRenderOption::ReverseInterlaced: {
+            const auto rect = Settings::GetBottomScreenOverlayDrawRect(
+                overlay, top_left, top_top, top_width, top_height, layout.is_rotated);
+            glUniform1i(uniform_layer, 0);
+            DrawSingleScreenStereo(bottom_info, bottom_info, texcoords, rect.x, rect.y, rect.w,
+                                   rect.h, orientation);
+            break;
+        }
+        }
+    }
+    glUniform1i(uniform_layer, 0);
 }
 
 void RendererOpenGL::TryPresent(int timeout_ms, bool is_secondary) {
